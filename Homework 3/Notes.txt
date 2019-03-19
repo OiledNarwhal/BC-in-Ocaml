@@ -1,0 +1,4 @@
+In dune file: was (libraries: core)
+
+
+cd to this file: /cygdrive/c/Users/'Michael McNally'/Desktop/'Prog Language Concepts'/'Homework 3'/bc

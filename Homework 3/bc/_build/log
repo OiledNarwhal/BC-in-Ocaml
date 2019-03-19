@@ -1,0 +1,63 @@
+# C:\OCaml64\home\MichaelMcNally\.opam\ocaml-variants.4.07.1+mingw64c\bin\dune.exe runtest
+# OCAMLPARAM: unset
+$ C:\OCaml64\home\MichaelMcNally\.opam\ocaml-variants.4.07.1+mingw64c\bin\ocamlc.opt.exe -config > C:\OCaml64\tmp\dunefe4a96.output
+$ (cd _build/default && .bc.inline-tests/run.exe inline-test-runner bc -source-tree-root . -diff-cmd -)
+> File "bc.ml", line 70, characters 0-66: p1 threw End_of_file.
+>   Raised at file "stdlib.ml", line 414, characters 9-26
+>   Called from file "stdlib.ml", line 425, characters 2-25
+>   Called from file "collector/expect_test_collector.ml", line 108, characters 16-42
+>   Called from file "collector/expect_test_collector.ml", line 136, characters 26-60
+>   Called from file "list.ml", line 117, characters 24-34
+>   Called from file "collector/expect_test_collector.ml", line 134, characters 14-228
+>   Called from file "collector/expect_test_collector.ml", line 19, characters 8-12
+>   Re-raised at file "collector/expect_test_collector.ml", line 21, characters 31-38
+>   Called from file "collector/expect_test_collector.ml", line 19, characters 8-12
+>   Re-raised at file "collector/expect_test_collector.ml", line 21, characters 31-38
+>   Called from file "collector/expect_test_collector.ml", line 192, characters 48-87
+>   Called from file "collector/expect_test_collector.ml", line 20, characters 19-29
+>   Called from file "collector/expect_test_collector.ml", line 251, characters 11-64
+>   Called from file "runtime-lib/runtime.ml", line 327, characters 8-12
+>   Re-raised at file "runtime-lib/runtime.ml", line 330, characters 6-13
+>   Called from file "runtime-lib/runtime.ml", line 343, characters 15-52
+>   Called from file "runtime-lib/runtime.ml", line 430, characters 52-83
+>
+> File "bc.ml", line 101, characters 0-72: p1 threw End_of_file.
+>   Raised at file "stdlib.ml", line 414, characters 9-26
+>   Called from file "stdlib.ml", line 425, characters 2-25
+>   Called from file "collector/expect_test_collector.ml", line 108, characters 16-42
+>   Called from file "collector/expect_test_collector.ml", line 136, characters 26-60
+>   Called from file "list.ml", line 117, characters 24-34
+>   Called from file "collector/expect_test_collector.ml", line 134, characters 14-228
+>   Called from file "collector/expect_test_collector.ml", line 19, characters 8-12
+>   Re-raised at file "collector/expect_test_collector.ml", line 21, characters 31-38
+>   Called from file "collector/expect_test_collector.ml", line 19, characters 8-12
+>   Re-raised at file "collector/expect_test_collector.ml", line 21, characters 31-38
+>   Called from file "collector/expect_test_collector.ml", line 192, characters 48-87
+>   Called from file "collector/expect_test_collector.ml", line 20, characters 19-29
+>   Called from file "collector/expect_test_collector.ml", line 251, characters 11-64
+>   Called from file "runtime-lib/runtime.ml", line 327, characters 8-12
+>   Re-raised at file "runtime-lib/runtime.ml", line 330, characters 6-13
+>   Called from file "runtime-lib/runtime.ml", line 343, characters 15-52
+>   Called from file "runtime-lib/runtime.ml", line 430, characters 52-83
+>
+> File "bc.ml", line 131, characters 0-97: p3 threw End_of_file.
+>   Raised at file "stdlib.ml", line 414, characters 9-26
+>   Called from file "stdlib.ml", line 425, characters 2-25
+>   Called from file "collector/expect_test_collector.ml", line 108, characters 16-42
+>   Called from file "collector/expect_test_collector.ml", line 136, characters 26-60
+>   Called from file "list.ml", line 117, characters 24-34
+>   Called from file "collector/expect_test_collector.ml", line 134, characters 14-228
+>   Called from file "collector/expect_test_collector.ml", line 19, characters 8-12
+>   Re-raised at file "collector/expect_test_collector.ml", line 21, characters 31-38
+>   Called from file "collector/expect_test_collector.ml", line 19, characters 8-12
+>   Re-raised at file "collector/expect_test_collector.ml", line 21, characters 31-38
+>   Called from file "collector/expect_test_collector.ml", line 192, characters 48-87
+>   Called from file "collector/expect_test_collector.ml", line 20, characters 19-29
+>   Called from file "collector/expect_test_collector.ml", line 251, characters 11-64
+>   Called from file "runtime-lib/runtime.ml", line 327, characters 8-12
+>   Re-raised at file "runtime-lib/runtime.ml", line 330, characters 6-13
+>   Called from file "runtime-lib/runtime.ml", line 343, characters 15-52
+>   Called from file "runtime-lib/runtime.ml", line 430, characters 52-83
+>
+> FAILED 3 / 4 tests
+[2]
