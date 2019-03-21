@@ -1,0 +1,97 @@
+let rec evalStatement (state: statement) (q: env list): float = 
+    match state with
+    | Assign(id, express) -> assignVariable id express q
+    | Expr(expr) -> evalExpr expr q
+    | If(expr, trueCode, falCode) -> 
+        let condition = evalExpr expr q in
+            if(condition = 1.0)
+            then (runCode trueCode q; 1.0)
+            else (runCode falCode q; 0.0)
+    | While(expr, code) -> 
+        while evalExpr expr q = 1.0 do
+            runCode code q;
+        done; 0.0;
+    | For(assign, check, incre, code) ->
+        evalStatement assign q |> ignore;
+        while evalExpr check q = 1.0 do
+            runCode code q;
+            evalStatement incre q |> ignore;
+        done; 0.0;
+    | FctDef(id, params, code) -> assignFunction id (FctDef(id, params, code)) q
+    | _ -> 0.0
+
+and runCode (code: statement list) (q: env list): unit = 
+    match code with
+    | [] -> ()
+    | _ -> evalStatement (List.hd code) q |> ignore; 
+            runCode (List.tl code) q;
+
+and varEval (v: string) (q:env list): float  = 
+    match (List.nth q (List.length q - 1)) with
+    | Scope(table) -> let test = Hashtbl.find_opt table v in
+                        match test with
+                        | None -> if(List.length q = 1)
+                                    then (failwith "Variable doesn't exist";)
+                                    else (varEval v (List.rev(List.tl(List.rev q)));)
+                        | Some(state) -> evalStatement state q;
+
+(*was:  let rec evalExpr (e: expr) (q:envQueue): float  = *)
+and evalExpr (e: expr) (q:env list): float  = 
+    match e with
+    | Num(value) -> value
+    | Var(id) -> varEval id q
+    | Op1(oper, v1) -> 
+        (match oper with
+            | "++" -> (evalExpr v1 q) +. 1.0
+            | "--" -> (evalExpr v1 q) -. 1.0 
+            | _ -> 0.0
+        )
+    | Op2(oper, v1, v2) ->
+        (match oper with
+            | "+" -> (evalExpr v1 q) +. (evalExpr v2 q)
+            | "-" -> (evalExpr v1 q) -. (evalExpr v2 q)
+            | "*" -> (evalExpr v1 q) *. (evalExpr v2 q)
+            | "/" -> (evalExpr v1 q) /. (evalExpr v2 q)
+            | "^" -> (evalExpr v1 q) ** (evalExpr v2 q)
+            | ">" -> if((evalExpr v1 q) > (evalExpr v2 q)) then 1.0 else 0.0
+            | "<" -> if((evalExpr v1 q) < (evalExpr v2 q)) then 1.0 else 0.0
+            | ">=" -> if((evalExpr v1 q) >= (evalExpr v2 q)) then 1.0 else 0.0
+            | "<=" -> if((evalExpr v1 q) <= (evalExpr v2 q)) then 1.0 else 0.0 
+            | "==" -> if((evalExpr v1 q) = (evalExpr v2 q)) then 1.0 else 0.0
+            | _ -> 0.0)
+    | Fct(id, params) -> let functionDef = funcEval id q in
+                        (match functionDef with
+                        | FctDef (id2, localVar, code) -> assignParams localVar params q; runCode code q; 0.0
+                        | _ -> 0.0)
+    
+and assignVariable (id: string) (express: expr) (q: env list): float =
+    match (List.nth q (List.length q - 1)) with
+    | Scope(table) -> Hashtbl.add table id (Expr(Num(evalExpr express q))); 1.0
+
+and assignFunction (id: string) (func: statement) (q:env list): float = 
+    match (List.nth q (List.length q - 1)) with
+    | Scope(table) -> Hashtbl.add table id func; 1.0
+
+and funcEval (id: string) (q: env list): statement = 
+    match (List.nth q (List.length q - 1)) with
+    | Scope(table) -> let test = Hashtbl.find_opt table id in
+                        match test with
+                        | None -> if(List.length q = 1)
+                                    then (failwith "Variable doesn't exist";)
+                                    else (funcEval id (List.rev(List.tl(List.rev q)));)
+                        | Some(state) -> state;
+
+and assignParams (names: string list) (values: expr list) (q: env list): unit =
+    if (List.length names = List.length values)
+    then
+    (
+        match names with
+        | [] -> ()
+        | _ -> evalStatement (Assign(List.hd names, List.hd values)) q |> ignore; 
+                assignParams (List.tl names) (List.tl values) q
+    )
+    else
+    (
+        
+    )
+;;

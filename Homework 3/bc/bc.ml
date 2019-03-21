@@ -21,14 +21,18 @@ type statement =
     | While of expr*statement list
     | For of statement*expr*statement*statement list
     | FctDef of string * string list * statement list
-    | Break of string
-    | Continue of string
+    | Break
+    | Continue
 
 type block = statement list 
 
 type env = Scope of (string, statement) Hashtbl.t
 
 type envQueue = ScopeList of env list
+
+exception ReturnExcep of float
+exception BreakExcep
+exception ContinueExcep
 
 (*
 let varEval (v: string) (q:env list): float  = 
@@ -68,7 +72,12 @@ let assignVariable (id: string) (express: expr) (q: env list): float =
 ;;
 *)
 
-let rec evalStatement (state: statement) (q: env list): float = 
+
+(* Trying to create Return labels. Things will get complicated. 
+Previous code is in "Code Backup.txt" *)
+
+let rec evalStatement (state: statement) (q: env list): float =
+    print_endline("Here I am");
     match state with
     | Assign(id, express) -> assignVariable id express q
     | Expr(expr) -> evalExpr expr q
@@ -78,9 +87,9 @@ let rec evalStatement (state: statement) (q: env list): float =
             then (runCode trueCode q; 1.0)
             else (runCode falCode q; 0.0)
     | While(expr, code) -> 
-        while evalExpr expr q = 1.0 do
-            runCode code q;
-        done; 0.0;
+        (try
+        runWhile expr code q; 0.0
+        with BreakExcep -> 0.0)
     | For(assign, check, incre, code) ->
         evalStatement assign q |> ignore;
         while evalExpr check q = 1.0 do
@@ -88,13 +97,18 @@ let rec evalStatement (state: statement) (q: env list): float =
             evalStatement incre q |> ignore;
         done; 0.0;
     | FctDef(id, params, code) -> assignFunction id (FctDef(id, params, code)) q
-    | _ -> 0.0
+    | Return(expr) -> let answer = evalExpr expr q in
+                        raise (ReturnExcep answer)
+    | Continue -> raise ContinueExcep
+    | Break -> raise BreakExcep
 
 and runCode (code: statement list) (q: env list): unit = 
     match code with
     | [] -> ()
-    | _ -> evalStatement (List.hd code) q |> ignore; 
+    | _ -> (try 
+            evalStatement (List.hd code) q |> ignore;
             runCode (List.tl code) q;
+            with ReturnExcep(answer) -> raise (ReturnExcep answer))
 
 and varEval (v: string) (q:env list): float  = 
     match (List.nth q (List.length q - 1)) with
@@ -131,7 +145,10 @@ and evalExpr (e: expr) (q:env list): float  =
             | _ -> 0.0)
     | Fct(id, params) -> let functionDef = funcEval id q in
                         (match functionDef with
-                        | FctDef (id2, localVar, code) -> assignParams localVar params q; runCode code q; 0.0
+                        | FctDef (id2, localVar, code) -> assignParams localVar params q; 
+                            (try 
+                            runCode code q; 0.0;
+                            with ReturnExcep(value) -> value)
                         | _ -> 0.0)
     
 and assignVariable (id: string) (express: expr) (q: env list): float =
@@ -164,6 +181,41 @@ and assignParams (names: string list) (values: expr list) (q: env list): unit =
     (
         
     )
+and start (state: statement) (q: env list): float = 
+    (try
+    match state with
+    | Assign(id, express) -> assignVariable id express q
+    | Expr(expr) -> evalExpr expr q
+    | If(expr, trueCode, falCode) -> 
+        let condition = evalExpr expr q in
+            if(condition = 1.0)
+            then (runCode trueCode q; 1.0)
+            else (runCode falCode q; 0.0)
+    | While(expr, code) -> 
+        while evalExpr expr q = 1.0 do
+            runCode code q;
+        done; 0.0;
+    | For(assign, check, incre, code) ->
+        evalStatement assign q |> ignore;
+        while evalExpr check q = 1.0 do
+            runCode code q;
+            evalStatement incre q |> ignore;
+        done; 0.0;
+    | FctDef(id, params, code) -> assignFunction id (FctDef(id, params, code)) q
+    | Return(expr) -> let answer = evalExpr expr q in
+                        raise (ReturnExcep answer)
+    | Continue -> raise ContinueExcep
+    | Break -> raise BreakExcep
+    with ReturnExcep(answer) -> answer)
+
+and runWhile (check: expr) (code: statement list) (q: env list) : unit =
+    
+    (try
+    if(evalExpr check q = 1.0)
+    then (try runCode code q; runWhile check code q; with ContinueExcep -> runWhile check code q;)
+    else ();
+    with BreakExcep -> print_string("Right here"))
+
 ;;
 (* Test for expression *)
 (*
@@ -266,7 +318,25 @@ evalExpr (Fct("add", Num(1.0) :: Num(3.0) :: [])) jimmy |> ignore;
 print_float (evalExpr(Var("C")) jimmy);
 print_endline "";
 
+print_string "---Testing 10 Return. Should be 4.0: ";
 
+let jimmy = Scope(Hashtbl.create 123456) :: [] in
+print_float (start (Return(Op2("+", Num(2.0), Num(2.0)))) jimmy);
+print_endline "";
+
+print_string "---Testing 10 Return. Should be 10.0: ";
+
+let jimmy = Scope(Hashtbl.create 123456) :: [] in
+print_float (start (If(Op2(">", Num(5.0), Num(4.0) ), Return(Num(10.0)) :: [], Return(Num(7.0)) :: [])) jimmy);
+print_endline "";
+
+print_string "---Testing 11 While statements with Break. Should be 3.0: ";
+
+let jimmy = Scope(Hashtbl.create 123456) :: [] in
+start (Assign("A", Num(0.0))) jimmy |> ignore;
+start (While(Op2("<", Var("A"), Num(5.0)), If(Op2(">", Var("A"), Num(3.0)), Break :: [], Assign("A", Op1("++", Var("A"))) :: []) :: [])) jimmy |> ignore;
+print_float (evalExpr(Var("A")) jimmy);
+print_endline "";
 
 
 
