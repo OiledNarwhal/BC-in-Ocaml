@@ -77,7 +77,6 @@ let assignVariable (id: string) (express: expr) (q: env list): float =
 Previous code is in "Code Backup.txt" *)
 
 let rec evalStatement (state: statement) (q: env list): float =
-    print_endline("Here I am");
     match state with
     | Assign(id, express) -> assignVariable id express q
     | Expr(expr) -> evalExpr expr q
@@ -92,10 +91,7 @@ let rec evalStatement (state: statement) (q: env list): float =
         with BreakExcep -> 0.0)
     | For(assign, check, incre, code) ->
         evalStatement assign q |> ignore;
-        while evalExpr check q = 1.0 do
-            runCode code q;
-            evalStatement incre q |> ignore;
-        done; 0.0;
+        runFor assign check incre code q; 0.0;
     | FctDef(id, params, code) -> assignFunction id (FctDef(id, params, code)) q
     | Return(expr) -> let answer = evalExpr expr q in
                         raise (ReturnExcep answer)
@@ -143,11 +139,13 @@ and evalExpr (e: expr) (q:env list): float  =
             | "<=" -> if((evalExpr v1 q) <= (evalExpr v2 q)) then 1.0 else 0.0 
             | "==" -> if((evalExpr v1 q) = (evalExpr v2 q)) then 1.0 else 0.0
             | _ -> 0.0)
-    | Fct(id, params) -> let functionDef = funcEval id q in
+    | Fct(id, params) -> let newScope = Scope(Hashtbl.create 123456)  in 
+                        let newList = List.append q (newScope :: []) in
+                        let functionDef = funcEval id newList in
                         (match functionDef with
-                        | FctDef (id2, localVar, code) -> assignParams localVar params q; 
+                        | FctDef (id2, localVar, code) -> assignParams localVar params newList; 
                             (try 
-                            runCode code q; 0.0;
+                            runCode code newList; 0.0;
                             with ReturnExcep(value) -> value)
                         | _ -> 0.0)
     
@@ -174,12 +172,11 @@ and assignParams (names: string list) (values: expr list) (q: env list): unit =
     (
         match names with
         | [] -> ()
-        | _ -> evalStatement (Assign(List.hd names, List.hd values)) q |> ignore; 
+        | _ -> assignVariable (List.hd names) (List.hd values) q |> ignore; 
                 assignParams (List.tl names) (List.tl values) q
     )
     else
     (
-        
     )
 and start (state: statement) (q: env list): float = 
     (try
@@ -192,15 +189,10 @@ and start (state: statement) (q: env list): float =
             then (runCode trueCode q; 1.0)
             else (runCode falCode q; 0.0)
     | While(expr, code) -> 
-        while evalExpr expr q = 1.0 do
-            runCode code q;
-        done; 0.0;
+        runWhile expr code q; 0.0
     | For(assign, check, incre, code) ->
         evalStatement assign q |> ignore;
-        while evalExpr check q = 1.0 do
-            runCode code q;
-            evalStatement incre q |> ignore;
-        done; 0.0;
+        runFor assign check incre code q; 0.0;
     | FctDef(id, params, code) -> assignFunction id (FctDef(id, params, code)) q
     | Return(expr) -> let answer = evalExpr expr q in
                         raise (ReturnExcep answer)
@@ -212,9 +204,25 @@ and runWhile (check: expr) (code: statement list) (q: env list) : unit =
     
     (try
     if(evalExpr check q = 1.0)
-    then (try runCode code q; runWhile check code q; with ContinueExcep -> runWhile check code q;)
+    then (try 
+        runCode code q; 
+        runWhile check code q; 
+        with ContinueExcep -> runWhile check code q;)
     else ();
-    with BreakExcep -> print_string("Right here"))
+    with BreakExcep -> ())
+
+and runFor (assign: statement) (check: expr) (incre: statement) (code: statement list) (q: env list) : unit =
+
+    (try
+    if(evalExpr check q = 1.0)
+    then 
+        (try 
+        runCode code q; 
+        evalStatement incre q |> ignore; 
+        runFor assign check incre code q; 
+        with ContinueExcep -> runFor assign check incre code q;)
+    else ();
+    with BreakExcep -> ())
 
 ;;
 (* Test for expression *)
@@ -313,9 +321,8 @@ print_string "---Testing 9 Functions. Should be 4.0: ";
 
 let jimmy = Scope(Hashtbl.create 123456) :: [] in
 evalStatement (Assign("A", Num(0.0))) jimmy |> ignore;
-evalStatement (FctDef("add", "A" :: "B" :: [], Assign("C", Op2("+", Var("A"), Var("B"))) :: [])) jimmy |> ignore;
-evalExpr (Fct("add", Num(1.0) :: Num(3.0) :: [])) jimmy |> ignore;
-print_float (evalExpr(Var("C")) jimmy);
+evalStatement (FctDef("add", "A" :: "B" :: [], Return(Op2("+", Var("A"), Var("B"))) :: [])) jimmy |> ignore;
+print_float(evalExpr (Fct("add", Num(1.0) :: Num(3.0) :: [])) jimmy);
 print_endline "";
 
 print_string "---Testing 10 Return. Should be 4.0: ";
@@ -334,10 +341,33 @@ print_string "---Testing 11 While statements with Break. Should be 3.0: ";
 
 let jimmy = Scope(Hashtbl.create 123456) :: [] in
 start (Assign("A", Num(0.0))) jimmy |> ignore;
-start (While(Op2("<", Var("A"), Num(5.0)), If(Op2(">", Var("A"), Num(3.0)), Break :: [], Assign("A", Op1("++", Var("A"))) :: []) :: [])) jimmy |> ignore;
+start (While(Op2("<", Var("A"), Num(5.0)), If(Op2(">=", Var("A"), Num(3.0)), Break :: [], Assign("A", Op1("++", Var("A"))) :: []) :: [])) jimmy |> ignore;
 print_float (evalExpr(Var("A")) jimmy);
 print_endline "";
 
+print_string "---Testing 12 runCode For statements with Return. Should be 7.0: ";
+
+let jimmy = Scope(Hashtbl.create 123456) :: [] in
+start (Assign("A", Num(0.0))) jimmy |> ignore;
+print_float (start (For(Assign("i", Num(0.0)), Op2("<", Var("i"), Num(6.0)), Assign("i", Op1("++", Var("i"))), Return(Num(7.0)) :: [])) jimmy);
+print_endline "";
+
+
+print_string "---Testing 13 Recursive Functions. Should be 15.0: ";
+
+let jimmy = Scope(Hashtbl.create 123456) :: [] in
+start(FctDef("Rec", "X" :: [], If(Op2("<", Var("X"), Num(1.0)), Return(Num(0.0)) :: [], Return(Op2("+", Var("X"), Fct("Rec", Op2("-", Var("X"), Num(1.0)) :: []))) :: []) :: [])) jimmy |> ignore;
+print_float(start(Expr(Fct("Rec", Num(5.0) :: []))) jimmy);
+print_endline "";
+
+
+print_string "---Testing 14 Recursive Functions. Should be 3.0: ";
+
+let jimmy = Scope(Hashtbl.create 123456) :: [] in
+start(Assign("X", Num(5.0))) jimmy |> ignore;
+start(FctDef("Rec", "X" :: [], Return(Var("X")) :: [])) jimmy |> ignore;
+print_float(start(Expr(Fct("Rec", Num(3.0) :: []))) jimmy);
+print_endline "";
 
 
 (* 
